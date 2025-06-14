@@ -1,0 +1,45 @@
+id: race-condition-single-request-example
+info:
+  name: Race Condition Test on Single Request
+  author: pdteam
+  severity: info
+  description: "Detects race condition issues by sending multiple concurrent requests for a single action, like coupon application."
+  tags: race, concurrent, web
+
+http:
+  - raw:
+      # This is the raw HTTP request that will be sent.
+      # Replace the path, host, and body with your target's actual request.
+      - |
+        POST /api/v1/apply_coupon HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        Content-Length: 20
+
+        {"coupon_code": "DISCOUNT10"} # Example JSON body for a coupon application
+
+    # The 'race: true' parameter activates Nuclei's race condition mode.
+    # When enabled, Nuclei will attempt to send all requests defined in this
+    # HTTP block (or the specified 'race_count' number of requests) in a near-simultaneous manner.
+    race: true
+
+    # 'race_count' specifies how many concurrent requests of the 'raw' definition
+    # should be sent. A higher number increases the chances of triggering a race condition
+    # but also puts more load on the target server. Common values are 10, 20, 50, or even 100+.
+    race_count: 10
+
+    # Matchers define what Nuclei should look for in the responses to consider the test successful.
+    # In race conditions, you're typically looking for an unexpected 'success' response
+    # where an error/failure should have occurred after the first valid action.
+    matchers:
+      - type: status # Match based on the HTTP status code.
+        part: header # Look for the status code in the response header.
+        status:
+          - 200 # Expecting a 200 OK where a 4xx or 5xx might be expected after the first use.
+        # You can add more specific matchers to confirm the race condition's impact,
+        # for example, by looking for specific messages in the response body.
+        # - type: word
+        #   words:
+        #     - "Coupon applied successfully"
+        #   part: body
+        #   condition: and # Use 'and' if multiple matchers must all be true.

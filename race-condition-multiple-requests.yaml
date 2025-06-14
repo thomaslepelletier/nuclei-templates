@@ -1,0 +1,51 @@
+id: race-condition-multiple-requests-example
+info:
+  name: Race Condition Test with Multiple Concurrent Requests
+  author: pd-team
+  severity: info
+  description: "Detects race conditions by sending different requests concurrently, such as multiple transfer attempts from the same account."
+  tags: race, concurrent, web, financial
+
+http:
+  - raw:
+      # Define each distinct HTTP request that should be sent concurrently.
+      # The number of requests here should match the 'threads' count below.
+      - |
+        POST /api/v1/transfer HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"from_account": "ACC123", "to_account": "ACC456", "amount": 100}
+      - |
+        POST /api/v1/transfer HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"from_account": "ACC123", "to_account": "ACC789", "amount": 100}
+      - |
+        POST /api/v1/transfer HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"from_account": "ACC123", "to_account": "ACCABC", "amount": 100}
+    
+    # 'threads' specifies the number of parallel requests to send when 'race: true' is also set.
+    # For multiple distinct requests, 'threads' should typically equal the number of 'raw' requests defined.
+    threads: 3
+    
+    # 'race: true' is essential here to tell Nuclei to attempt to send these 'threads' requests
+    # in a concurrent fashion, aiming to exploit the race window.
+    race: true
+
+    matchers:
+      - type: status
+        status:
+          - 200 # Look for successful HTTP status codes.
+        # For multi-request race conditions, you'd likely need more complex matchers
+        # to detect the actual impact, e.g., checking if the source account balance
+        # went negative, or if multiple transactions were recorded where only one should have been.
+        # - type: word
+        #   words:
+        #     - "Transaction successful"
+        #   part: body
+        #   condition: and
